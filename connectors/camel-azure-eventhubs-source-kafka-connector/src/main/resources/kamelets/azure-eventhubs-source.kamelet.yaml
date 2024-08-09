@@ -36,13 +36,10 @@ spec:
       
       There are two different mechanism of authentication `CONNECTION_STRING` and `AZURE_IDENTITY`, you could specify with credentialType property. If you're using `CONNECTION_STRING` sharedAccessName and sharedAccessKey properties will be needed.
       
-      In case of `AZURE_IDENTITY` selection, the DefaultAzureCredential will attempt to authenticate via the following mechanisms in the following order enviroment, Workload Identity, Managed Identity, Azure Developer CLI, IntelliJ, Azure CLI and Azure Powershell. 
+      In case of `AZURE_IDENTITY` selection, the DefaultAzureCredential will attempt to authenticate via the following mechanisms in the following order enviroment, Workload Identity, Managed Identity, Azure Developer CLI, IntelliJ, Azure CLI and Azure Powershell.
     required:
       - namespaceName
       - eventhubName
-      - blobAccountName
-      - blobAccessKey
-      - blobContainerName
     type: object
     properties:
       namespaceName:
@@ -100,9 +97,9 @@ spec:
       parameters:
         sharedAccessName: "{{?sharedAccessName}}"
         sharedAccessKey: "{{?sharedAccessKey}}"
-        blobAccountName: "{{blobAccountName}}"
-        blobAccessKey: "{{blobAccessKey}}"
-        blobContainerName: "{{blobContainerName}}"
+        blobAccountName: "{{?blobAccountName}}"
+        blobAccessKey: "{{?blobAccessKey}}"
+        blobContainerName: "{{?blobContainerName}}"
         credentialType: "{{credentialType}}"
       steps:
       - to: "kamelet:sink"

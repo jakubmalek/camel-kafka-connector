@@ -23,8 +23,10 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 
 import org.apache.camel.CamelContext;
+import org.apache.camel.Endpoint;
 import org.apache.camel.Exchange;
 import org.apache.camel.LoggingLevel;
 import org.apache.camel.PollingConsumer;
@@ -72,7 +74,7 @@ public class CamelSourceTask extends SourceTask {
     private SpscArrayQueue<Integer> freeSlots;
     private boolean mapProperties;
     private boolean mapHeaders;
-
+    private Consumer<Endpoint> endpointCustomizer;
 
     @Override
     public String version() {
@@ -103,23 +105,23 @@ public class CamelSourceTask extends SourceTask {
             final String componentSchema = config.getString(CamelSourceConnectorConfig.CAMEL_SOURCE_COMPONENT_CONF);
             final String unmarshaller = config.getString(CamelSourceConnectorConfig.CAMEL_SOURCE_UNMARSHAL_CONF);
             final String marshaller = config.getString(CamelSourceConnectorConfig.CAMEL_SOURCE_MARSHAL_CONF);
-            final int size = config.getInt(CamelSourceConnectorConfig.CAMEL_CONNECTOR_AGGREGATE_SIZE_CONF);
-            final long timeout = config.getLong(CamelSourceConnectorConfig.CAMEL_CONNECTOR_AGGREGATE_TIMEOUT_CONF);
-            final int maxRedeliveries = config.getInt(CamelSourceConnectorConfig.CAMEL_CONNECTOR_ERROR_HANDLER_MAXIMUM_REDELIVERIES_CONF);
-            final long redeliveryDelay = config.getLong(CamelSourceConnectorConfig.CAMEL_CONNECTOR_ERROR_HANDLER_REDELIVERY_DELAY_CONF);
-            final String errorHandler = config.getString(CamelSourceConnectorConfig.CAMEL_CONNECTOR_ERROR_HANDLER_CONF);
-            final Boolean idempotencyEnabled = config.getBoolean(CamelSourceConnectorConfig.CAMEL_CONNECTOR_IDEMPOTENCY_ENABLED_CONF);
-            final String expressionType = config.getString(CamelSourceConnectorConfig.CAMEL_CONNECTOR_IDEMPOTENCY_EXPRESSION_TYPE_CONF);
-            final String expressionHeader = config.getString(CamelSourceConnectorConfig.CAMEL_CONNECTOR_IDEMPOTENCY_EXPRESSION_HEADER_CONF);
-            final int memoryDimension = config.getInt(CamelSourceConnectorConfig.CAMEL_CONNECTOR_IDEMPOTENCY_MEMORY_DIMENSION_CONF);
-            final String idempotentRepositoryType = config.getString(CamelSourceConnectorConfig.CAMEL_CONNECTOR_IDEMPOTENCY_REPOSITORY_TYPE_CONF);
-            final String idempotentRepositoryKafkaTopic = config.getString(CamelSourceConnectorConfig.CAMEL_CONNECTOR_IDEMPOTENCY_KAFKA_TOPIC_CONF);
-            final String idempotentRepositoryBootstrapServers = config.getString(CamelSourceConnectorConfig.CAMEL_CONNECTOR_IDEMPOTENCY_KAFKA_BOOTSTRAP_SERVERS_CONF);
-            final int idempotentRepositoryKafkaMaxCacheSize = config.getInt(CamelSourceConnectorConfig.CAMEL_CONNECTOR_IDEMPOTENCY_KAFKA_MAX_CACHE_SIZE_CONF);
-            final int idempotentRepositoryKafkaPollDuration = config.getInt(CamelSourceConnectorConfig.CAMEL_CONNECTOR_IDEMPOTENCY_KAFKA_POLL_DURATION_CONF);
-            final String headersRemovePattern = config.getString(CamelSourceConnectorConfig.CAMEL_CONNECTOR_REMOVE_HEADERS_PATTERN_CONF);
-            mapProperties = config.getBoolean(CamelSourceConnectorConfig.CAMEL_CONNECTOR_MAP_PROPERTIES_CONF);
-            mapHeaders = config.getBoolean(CamelSinkConnectorConfig.CAMEL_CONNECTOR_MAP_HEADERS_CONF);
+            final int size = config.getInt(CamelConnectorConfig.CAMEL_CONNECTOR_AGGREGATE_SIZE_CONF);
+            final long timeout = config.getLong(CamelConnectorConfig.CAMEL_CONNECTOR_AGGREGATE_TIMEOUT_CONF);
+            final int maxRedeliveries = config.getInt(CamelConnectorConfig.CAMEL_CONNECTOR_ERROR_HANDLER_MAXIMUM_REDELIVERIES_CONF);
+            final long redeliveryDelay = config.getLong(CamelConnectorConfig.CAMEL_CONNECTOR_ERROR_HANDLER_REDELIVERY_DELAY_CONF);
+            final String errorHandler = config.getString(CamelConnectorConfig.CAMEL_CONNECTOR_ERROR_HANDLER_CONF);
+            final Boolean idempotencyEnabled = config.getBoolean(CamelConnectorConfig.CAMEL_CONNECTOR_IDEMPOTENCY_ENABLED_CONF);
+            final String expressionType = config.getString(CamelConnectorConfig.CAMEL_CONNECTOR_IDEMPOTENCY_EXPRESSION_TYPE_CONF);
+            final String expressionHeader = config.getString(CamelConnectorConfig.CAMEL_CONNECTOR_IDEMPOTENCY_EXPRESSION_HEADER_CONF);
+            final int memoryDimension = config.getInt(CamelConnectorConfig.CAMEL_CONNECTOR_IDEMPOTENCY_MEMORY_DIMENSION_CONF);
+            final String idempotentRepositoryType = config.getString(CamelConnectorConfig.CAMEL_CONNECTOR_IDEMPOTENCY_REPOSITORY_TYPE_CONF);
+            final String idempotentRepositoryKafkaTopic = config.getString(CamelConnectorConfig.CAMEL_CONNECTOR_IDEMPOTENCY_KAFKA_TOPIC_CONF);
+            final String idempotentRepositoryBootstrapServers = config.getString(CamelConnectorConfig.CAMEL_CONNECTOR_IDEMPOTENCY_KAFKA_BOOTSTRAP_SERVERS_CONF);
+            final int idempotentRepositoryKafkaMaxCacheSize = config.getInt(CamelConnectorConfig.CAMEL_CONNECTOR_IDEMPOTENCY_KAFKA_MAX_CACHE_SIZE_CONF);
+            final int idempotentRepositoryKafkaPollDuration = config.getInt(CamelConnectorConfig.CAMEL_CONNECTOR_IDEMPOTENCY_KAFKA_POLL_DURATION_CONF);
+            final String headersRemovePattern = config.getString(CamelConnectorConfig.CAMEL_CONNECTOR_REMOVE_HEADERS_PATTERN_CONF);
+            mapProperties = config.getBoolean(CamelConnectorConfig.CAMEL_CONNECTOR_MAP_PROPERTIES_CONF);
+            mapHeaders = config.getBoolean(CamelConnectorConfig.CAMEL_CONNECTOR_MAP_HEADERS_CONF);
 
             topics = config.getString(CamelSourceConnectorConfig.TOPIC_CONF).split(",");
 
@@ -172,8 +174,11 @@ public class CamelSourceTask extends SourceTask {
                 .withIdempotentRepositoryKafkaPollDuration(idempotentRepositoryKafkaPollDuration)
                 .withHeadersExcludePattern(headersRemovePattern)
                 .build(camelContext);
-
-            consumer = cms.getCamelContext().getEndpoint(localUrl).createPollingConsumer();
+            Endpoint endpoint = cms.getCamelContext().getEndpoint(localUrl);
+            if (endpointCustomizer != null) {
+                endpointCustomizer.accept(endpoint);
+            }
+            consumer = endpoint.createPollingConsumer();
             consumer.start();
 
             cms.start();
@@ -184,11 +189,12 @@ public class CamelSourceTask extends SourceTask {
         }
     }
 
+
     protected String getSourceKamelet() {
         return DEFAULT_KAMELET_CKC_SOURCE;
     }
 
-    private long remaining(long startPollEpochMilli, long maxPollDuration)  {
+    private static long remaining(long startPollEpochMilli, long maxPollDuration)  {
         return maxPollDuration - (Instant.now().toEpochMilli() - startPollEpochMilli);
     }
 
@@ -211,10 +217,8 @@ public class CamelSourceTask extends SourceTask {
             LOG.debug("Received Exchange {} with Message {} from Endpoint {}", exchange.getExchangeId(),
                     exchange.getMessage().getMessageId(), exchange.getFromEndpoint());
 
-            // TODO: see if there is a better way to use sourcePartition
-            // an sourceOffset
-            Map<String, String> sourcePartition = Collections.singletonMap("filename", exchange.getFromEndpoint().toString());
-            Map<String, String> sourceOffset = Collections.singletonMap("position", exchange.getExchangeId());
+            Map<String, ?> sourcePartition = toSourcePartition(exchange);
+            Map<String, ?> sourceOffset = toSourceOffset(exchange);
 
             final Object messageHeaderKey = camelMessageHeaderKey != null ? exchange.getMessage().getHeader(camelMessageHeaderKey) : null;
             Object messageBodyValue = exchange.getMessage().getBody();
@@ -225,10 +229,9 @@ public class CamelSourceTask extends SourceTask {
             final long timestamp = calculateTimestamp(exchange);
 
             // take in account Cached camel streams
-            if (messageBodyValue instanceof StreamCache) {
-                StreamCache sc = (StreamCache) messageBodyValue;
+            if (messageBodyValue instanceof StreamCache streamCache) {
                 // reset to be sure that the cache is ready to be used before sending it in the record (could be useful for SMTs)
-                sc.reset();
+                streamCache.reset();
             }
             for (String singleTopic : topics) {
                 CamelSourceRecord camelRecord = new CamelSourceRecord(sourcePartition, sourceOffset, singleTopic, null, messageKeySchema,
@@ -239,7 +242,7 @@ public class CamelSourceTask extends SourceTask {
                         setAdditionalHeaders(camelRecord, exchange.getMessage().getHeaders(), HEADER_CAMEL_PREFIX);
                     }
                 }
-                
+
                 if (mapProperties) {
                     if (exchange.hasProperties()) {
                         setAdditionalHeaders(camelRecord, exchange.getProperties(), PROPERTY_CAMEL_PREFIX);
@@ -330,49 +333,44 @@ public class CamelSourceTask extends SourceTask {
         return System.currentTimeMillis();
     }
 
-    private void setAdditionalHeaders(SourceRecord record, Map<String, Object> map, String prefix) {
+    private static void setAdditionalHeaders(SourceRecord record, Map<String, Object> map, String prefix) {
 
         for (Map.Entry<String, Object> entry : map.entrySet()) {
             String key = entry.getKey();
             Object value = entry.getValue();
             String keyCamelHeader = prefix + key;
 
-            if (value instanceof String) {
-                record.headers().addString(keyCamelHeader, (String)value);
-            } else if (value instanceof Boolean) {
-                record.headers().addBoolean(keyCamelHeader, (boolean)value);
-            } else if (value instanceof Byte) {
-                record.headers().addByte(keyCamelHeader, (byte)value);
-            } else if (value instanceof Byte[]) {
-                final Byte[] array = (Byte[])value;
-                final byte[] bytes = new byte[array.length];
-
-                for (int i = 0; i < array.length; i++) {
-                    bytes[i] = array[i];
-                }
-
+            if (value instanceof String stringValue) {
+                record.headers().addString(keyCamelHeader, stringValue);
+            } else if (value instanceof Boolean booleanValue) {
+                record.headers().addBoolean(keyCamelHeader, booleanValue);
+            } else if (value instanceof Byte byteValue) {
+                record.headers().addByte(keyCamelHeader, byteValue);
+            } else if (value instanceof Byte[] byteArray) {
+                final byte[] bytes = new byte[byteArray.length];
+                System.arraycopy(byteArray, 0, bytes, 0, bytes.length);
                 record.headers().addBytes(keyCamelHeader, bytes);
-            } else if (value instanceof Date) {
-                record.headers().addTimestamp(keyCamelHeader, (Date)value);
-            } else if (value instanceof BigDecimal) {
+            } else if (value instanceof Date dateValue) {
+                record.headers().addTimestamp(keyCamelHeader, dateValue);
+            } else if (value instanceof BigDecimal decimalValue) {
                 //XXX: kafka connect configured header converter takes care of the encoding,
                 //default: org.apache.kafka.connect.storage.SimpleHeaderConverter
-                record.headers().addDecimal(keyCamelHeader, (BigDecimal)value);
-            } else if (value instanceof Double) {
-                record.headers().addDouble(keyCamelHeader, (double)value);
-            } else if (value instanceof Float) {
-                record.headers().addFloat(keyCamelHeader, (float)value);
-            } else if (value instanceof Integer) {
-                record.headers().addInt(keyCamelHeader, (int)value);
-            } else if (value instanceof Long) {
-                record.headers().addLong(keyCamelHeader, (long)value);
-            } else if (value instanceof Short) {
-                record.headers().addShort(keyCamelHeader, (short)value);
+                record.headers().addDecimal(keyCamelHeader, decimalValue);
+            } else if (value instanceof Double doubleValue) {
+                record.headers().addDouble(keyCamelHeader, doubleValue);
+            } else if (value instanceof Float floatValue) {
+                record.headers().addFloat(keyCamelHeader, floatValue);
+            } else if (value instanceof Integer intValue) {
+                record.headers().addInt(keyCamelHeader, intValue);
+            } else if (value instanceof Long longValue) {
+                record.headers().addLong(keyCamelHeader, longValue);
+            } else if (value instanceof Short shortValue) {
+                record.headers().addShort(keyCamelHeader, shortValue);
             }
         }
     }
 
-    private String getLocalUrlWithPollingOptions(long pollingConsumerQueueSize, long pollingConsumerBlockTimeout, boolean pollingConsumerBlockWhenFull) {
+    private static String getLocalUrlWithPollingOptions(long pollingConsumerQueueSize, long pollingConsumerBlockTimeout, boolean pollingConsumerBlockWhenFull) {
         return LOCAL_URL + "?pollingConsumerQueueSize=" + pollingConsumerQueueSize + "&pollingConsumerBlockTimeout=" + pollingConsumerBlockTimeout
                + "&pollingConsumerBlockWhenFull=" + pollingConsumerBlockWhenFull;
     }
@@ -387,5 +385,17 @@ public class CamelSourceTask extends SourceTask {
 
     public void setLoggingLevel(LoggingLevel loggingLevel) {
         this.loggingLevel = loggingLevel;
+    }
+
+    protected void setEndpointCustomizer(Consumer<Endpoint> endpointCustomizer) {
+        this.endpointCustomizer = endpointCustomizer;
+    }
+
+    protected Map<String, ?> toSourcePartition(Exchange exchange) {
+        return Collections.singletonMap("filename", exchange.getFromEndpoint().toString());
+    }
+
+    protected Map<String, ?> toSourceOffset(Exchange exchange) {
+        return Collections.singletonMap("position", exchange.getExchangeId());
     }
 }

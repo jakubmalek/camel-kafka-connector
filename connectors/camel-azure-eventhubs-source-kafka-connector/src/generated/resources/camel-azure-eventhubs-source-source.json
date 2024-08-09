@@ -36,19 +36,19 @@
 		"camel.kamelet.azure-eventhubs-source.blobAccountName": {
 			"name": "camel.kamelet.azure-eventhubs-source.blobAccountName",
 			"description": "The name of the Storage Blob account.",
-			"priority": "HIGH",
+			"priority": "MEDIUM",
 			"required": "true"
 		},
 		"camel.kamelet.azure-eventhubs-source.blobContainerName": {
 			"name": "camel.kamelet.azure-eventhubs-source.blobContainerName",
 			"description": "The name of the Storage Blob container.",
-			"priority": "HIGH",
+			"priority": "MEDIUM",
 			"required": "true"
 		},
 		"camel.kamelet.azure-eventhubs-source.blobAccessKey": {
 			"name": "camel.kamelet.azure-eventhubs-source.blobAccessKey",
 			"description": "The key for the Azure Storage Blob service that is associated with the Storage Blob account name.",
-			"priority": "HIGH",
+			"priority": "MEDIUM",
 			"required": "true"
 		},
 		"camel.kamelet.azure-eventhubs-source.credentialType": {
